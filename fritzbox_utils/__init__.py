@@ -121,7 +121,7 @@ def check_status():
     outages = (
         ldf.groupby(["event", ldf["timestamp"].dt.date])
         .count()
-        .loc["internet connection interrupted"]["timestamp"]
+        .loc["dsl no answer"]["timestamp"]
         .rename("outages")
     )
 
