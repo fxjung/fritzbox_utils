@@ -7,9 +7,9 @@ with open(path.join(ROOT_DIR, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="fxutil",
+    name="fritzbox_utils",
     version="0.1alpha",
-    description="handy utils",
+    description="handy fritzbox utils",
     long_description=long_description,
     # url='',
     keywords="utilities, python, science",
