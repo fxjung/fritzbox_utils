@@ -2,6 +2,8 @@ import re
 import hashlib
 import tabulate
 import keyring
+import os
+import toml
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,6 +18,26 @@ from fritzconnection import FritzConnection
 pd.set_option("display.max_rows", 500)
 
 keyring_id = "fritzbox_admin_password"
+
+
+def get_config():
+    config_path = (
+        (Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")) / "fritzbox_utils/config")
+        .expanduser()
+        .resolve()
+    )
+
+    config_path.parent.mkdir(exist_ok=True, parents=True)
+
+    if not config_path.exists():
+        conf = {"csv_path": str(Path("~/fritzbox.csv").expanduser())}
+        toml.dump(conf, config_path.open("w"))
+    else:
+        conf = toml.load(config_path.open("r"))
+
+    conf["csv_path"] = Path(conf["csv_path"])
+
+    return type("config", (object,), conf)
 
 
 def get_connection():
@@ -107,15 +129,14 @@ def log2df(log):
 
 
 def check_status():
+    config = get_config()
+
     fc = get_connection()
-
-    csv_path = Path("~/fritzbox.csv").expanduser()
-
     log = fc.call_action("DeviceInfo1", "GetDeviceLog")["NewDeviceLog"]
     new_ldf = log2df(log)
 
-    if csv_path.exists():
-        old_ldf = pd.read_csv(csv_path, parse_dates=[0])
+    if config.csv_path.exists():
+        old_ldf = pd.read_csv(config.csv_path, parse_dates=[0])
         old_ldf.set_index(["timestamp", "hash"], inplace=True)
         existing_keys = set(old_ldf.index)
     else:
@@ -132,7 +153,7 @@ def check_status():
             ldf = new_ldf
 
         ldf.reset_index(drop=False, inplace=True)
-        ldf.to_csv(csv_path, index=False)
+        ldf.to_csv(config.csv_path, index=False)
     else:
         ldf = old_ldf
         print("No new events")
