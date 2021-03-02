@@ -18,7 +18,7 @@ pd.set_option("display.max_rows", 500)
 keyring_id = "fritzbox_admin_password"
 
 
-def check_status():
+def get_connection():
     if (
         passwd := keyring.get_password(service_name=keyring_id, username="admin")
     ) is None:
@@ -31,10 +31,10 @@ def check_status():
         )
         print("Password successfully saved to the system keyring.")
 
-    fc = FritzConnection(address="192.168.0.1", password=passwd)
+    return FritzConnection(address="192.168.0.1", password=passwd)
 
-    log = fc.call_action("DeviceInfo1", "GetDeviceLog")["NewDeviceLog"]
 
+def log2df(log):
     ldf = pd.DataFrame(
         re.findall(r"(\d\d\.\d\d.\d\d \d\d:\d\d:\d\d) (.*)", log),
         columns=["timestamp", "text"],
@@ -103,21 +103,42 @@ def check_status():
     )
     ldf.set_index(["timestamp", "hash"], inplace=True)
 
-    df = pd.read_csv("/home/jung/fritzbox.csv", parse_dates=[0])
-    df.set_index(["timestamp", "hash"], inplace=True)
+    return ldf
 
-    sd = list(set(ldf.index) - set(df.index))
-    if sd:
-        new_events = ldf.loc[sd].sort_values(["timestamp", "hash"])
+
+def check_status():
+    fc = get_connection()
+
+    csv_path = Path("~/fritzbox.csv").expanduser()
+
+    log = fc.call_action("DeviceInfo1", "GetDeviceLog")["NewDeviceLog"]
+    new_ldf = log2df(log)
+
+    if csv_path.exists():
+        old_ldf = pd.read_csv(csv_path, parse_dates=[0])
+        old_ldf.set_index(["timestamp", "hash"], inplace=True)
+        existing_keys = set(old_ldf.index)
+    else:
+        existing_keys = set()
+
+    if sd := list(set(new_ldf.index) - existing_keys):
+        new_events = new_ldf.loc[sd].sort_values(["timestamp", "hash"]).copy()
         print("New events:")
         print(new_events)
 
-        ldf = df.append(new_events).reset_index()
-        ldf.to_csv("/home/jung/fritzbox.csv", index=False)
+        if existing_keys:
+            ldf = old_ldf.append(new_events).reset_index()
+        else:
+            ldf = new_ldf
+
+        ldf.reset_index(drop=False, inplace=True)
+        ldf.to_csv(csv_path, index=False)
     else:
+        ldf = old_ldf
         print("No new events")
 
     ldf.reset_index(inplace=True)
+
     outages = (
         ldf.groupby(["event", ldf["timestamp"].dt.date])
         .count()
