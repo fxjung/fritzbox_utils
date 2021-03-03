@@ -136,8 +136,7 @@ def check_status():
     new_ldf = log2df(log)
 
     if config.csv_path.exists():
-        old_ldf = pd.read_csv(config.csv_path, parse_dates=[0])
-        old_ldf.set_index(["timestamp", "hash"], inplace=True)
+        old_ldf = pd.read_csv(config.csv_path, parse_dates=[0], index_col=[0, 1])
         existing_keys = set(old_ldf.index)
     else:
         existing_keys = set()
@@ -148,12 +147,11 @@ def check_status():
         print(new_events)
 
         if existing_keys:
-            ldf = old_ldf.append(new_events).reset_index()
+            ldf = old_ldf.append(new_events)
         else:
             ldf = new_ldf
 
-        ldf.reset_index(drop=False, inplace=True)
-        ldf.to_csv(config.csv_path, index=False)
+        ldf.to_csv(config.csv_path, index=True)
     else:
         ldf = old_ldf
         print("No new events")
