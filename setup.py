@@ -19,7 +19,12 @@ setup(
     #     'Development Status :: 4 - Beta'
     # ],
     packages=find_packages(),
-    entry_points={"console_scripts": ["fb_check = fritzbox_utils:check_status"]},
+    entry_points={
+        "console_scripts": [
+            "fb_check = fritzbox_utils:check_status",
+            "fb_ipy = fritzbox_utils:get_fb_ipy",
+        ]
+    },
     install_requires=[
         "black",
         "pre-commit",

@@ -40,7 +40,7 @@ def get_config():
     return type("config", (object,), conf)
 
 
-def get_connection():
+def get_connection(connection_type="default"):
     if (
         passwd := keyring.get_password(service_name=keyring_id, username="admin")
     ) is None:
@@ -53,7 +53,13 @@ def get_connection():
         )
         print("Password successfully saved to the system keyring.")
 
-    return FritzConnection(address="192.168.0.1", password=passwd)
+    args = dict(address="192.168.0.1", password=passwd)
+    if connection_type == "default":
+        return FritzConnection(**args)
+    elif connection_type == "call":
+        from fritzconnection.lib.fritzcall import FritzCall
+
+        return FritzCall(**args)
 
 
 def log2df(log):
@@ -178,3 +184,11 @@ def check_status():
     # plt.show()
 
     # ldf[ldf["event"] == "internet connection interrupted"]
+
+
+def get_fb_ipy():
+    config = get_config()
+    fc = get_connection()
+    from IPython import embed
+
+    embed()
